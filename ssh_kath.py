@@ -31,7 +31,7 @@ class SSHCommand:
             'Compression': 'yes',
             'DynamicForward': 'localhost:{}'.format(S.args.socks_port),
             'EscapeChar': 'none',
-            'LocalCommand': "echo -en '{}'".format(TerminalTitles.escape('connected')),
+            'LocalCommand': "echo -en '{}'".format(Titles.escape('connected')),
             'PermitLocalCommand': 'yes',
             'Port': S.args.port,
             'RequestTTY': 'force',
@@ -50,7 +50,7 @@ class SSHCommand:
         process = subprocess.Popen(self.args, pass_fds=(0, 1, 2))
         process.wait()
 
-class TerminalTitles:
+class Titles:
     messages = {
         'connected': 'Connected 😃',
         'reconnecting': 'Reconnecting… 😣',
@@ -68,11 +68,11 @@ class TerminalTitles:
 
 def main():
     ssh = SSHCommand()
-    TerminalTitles.title('starting')
+    Titles.title('starting')
     ssh.connect()
 
     while True:
-        TerminalTitles.title('reconnecting')
+        Titles.title('reconnecting')
         ssh.connect()
         time.sleep(1)
 
