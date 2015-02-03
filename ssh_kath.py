@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 
 import argparse
+import socketserver
 import subprocess
 import sys
+import threading
 import time
 
 class State:
@@ -20,6 +22,9 @@ class State:
         parser.add_argument(
             '--socks-port', default=1080, type=int,
             help='the local port number to open a socks proxy on')
+        parser.add_argument(
+            '--backchat-port', default=38627, type=int,
+            help='the port number to use to stream push notifications back from the server')
         self.args = parser.parse_args()
 
 class SSHCommand:
@@ -34,6 +39,7 @@ class SSHCommand:
             'LocalCommand': "echo -en '{}'".format(Titles.escape('connected')),
             'PermitLocalCommand': 'yes',
             'Port': S.args.port,
+            'RemoteForward': '{0} localhost:{0}'.format(S.args.backchat_port),
             'RequestTTY': 'force',
             'ServerAliveCountMax': 1,
             'ServerAliveInterval': 3,
@@ -44,11 +50,34 @@ class SSHCommand:
             yield '-o'
             yield '{}={}'.format(*option)
         yield '{}@{}'.format(S.args.user, S.args.host)
-        yield 'rm -f .ssh_tty; ln -s "${SSH_TTY}" .ssh_tty; tmux attach || tmux'
+        yield 'tmux attach || tmux'
 
     def connect(self):
         process = subprocess.Popen(self.args, pass_fds=(0, 1, 2))
         process.wait()
+
+class BackchatHandler(socketserver.StreamRequestHandler):
+    def handle(self):
+        msg = [a.decode() for a in self.rfile.read().split(b'\xfe')]
+        if len(msg) == 3:
+            args = [
+                '/usr/local/bin/terminal-notifier',
+                '-sender', 'com.googlecode.iterm2',
+                '-title', '{}. {}'.format(msg[0], msg[1]),
+                '-message', msg[2]
+            ]
+            subprocess.call(args)
+        else:
+            raise RuntimeError()
+
+class BackchatServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
+    pass
+
+class BackchatThread:
+    def __init__(self):
+        self.server = BackchatServer(('localhost', S.args.backchat_port), BackchatHandler)
+        self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
+        self.thread.start()
 
 class Titles:
     messages = {
@@ -67,6 +96,7 @@ class Titles:
         print(cls.escape(message_name), file=sys.stderr)
 
 def main():
+    BackchatThread()
     ssh = SSHCommand()
     Titles.title('starting')
     ssh.connect()
