@@ -41,7 +41,7 @@ class SSHCommand:
             'Port': S.args.port,
             'RemoteForward': '{0} localhost:{0}'.format(S.args.backchat_port),
             'RequestTTY': 'force',
-            'ServerAliveCountMax': 1,
+            'ServerAliveCountMax': 2,
             'ServerAliveInterval': 3,
             'TCPKeepAlive': 'no',
         }
