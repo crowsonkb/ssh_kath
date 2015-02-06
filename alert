@@ -1,0 +1,3 @@
+#!/bin/bash
+
+echo -en "$1\xfe$2\xfe$3" > /dev/tcp/localhost/38627
